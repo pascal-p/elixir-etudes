@@ -1,0 +1,2 @@
+defmodule Hashes do
+end
