@@ -2,7 +2,7 @@
 
 ## Extract from Études for Elixir, from by J. David Eisenberg
 
-src: [Études for Elixir](http://chimera.labs.oreilly.com/books/1234000001642)
+src: [Études for Elixir](http://chimera.labs.oreilly.com/books/1234000001642), 
      [Read online for free](http://chimera.labs.oreilly.com/books/1234000001642/index.html)
 
 This work covers and extends (in some cases) the following chapters of the aforementioned book:
@@ -15,7 +15,7 @@ Also:
 
 
 ## TODO
-  Add other chapters.
+  Add other chapters (WIP)
 
 ## Usage
   Clean it, fork it, play with it.
