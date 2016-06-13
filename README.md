@@ -8,7 +8,7 @@ src: [Études for Elixir](http://chimera.labs.oreilly.com/books/1234000001642),
 This work covers and extends (in some cases) the following chapters of the aforementioned book:
   - chap 7. Hashes,
   - chap 8. Higher Order Functions and List Comprehensions
-  - chap 9. Processes (WIP)
+  - chap 9. Processes 
 
 Also:
   - a work on re-implementing portion of Enum
