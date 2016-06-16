@@ -9,11 +9,12 @@ defmodule OtpWeather do
     children = [
       # Define workers and child supervisors to be supervised
       # worker(OtpWeather.Worker, [arg1, arg2, arg3]),
+      worker(Weather, [])
     ]
 
     # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: OtpWeather.Supervisor]
-    Supervisor.start_link(children, opts)
+    {:ok, _pid} = Supervisor.start_link(children, opts)
   end
 end

@@ -1,6 +1,6 @@
 defmodule OtpWeather.Mixfile do
   use Mix.Project
-
+  
   def project do
     [app: :otp_weather,
      version: "0.0.1",
@@ -14,7 +14,7 @@ defmodule OtpWeather.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger],
+    [applications: [:logger, :httpoison],
      mod: {OtpWeather, []}]
   end
 
@@ -28,6 +28,9 @@ defmodule OtpWeather.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    []
+    [
+     # DO NOT NEED TO LIST  IT as it is install as a FreeBSD package elixir-httpoison-0.8.3 
+     # { :httpoison, "~> 0.8.3" }
+    ]
   end
 end
