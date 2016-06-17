@@ -17,6 +17,21 @@ defmodule Weather do
     {:ok, state}
   end
 
+
+  @doc "Connect to another node"
+  @spec connect(atom) :: atom
+  
+  def connect(onode) do
+    case :net_adm.ping(onode) do
+      :pong ->
+        Logger.info "Connected to server."
+        :ok
+      :pang ->
+        Logger.error "Could not connect."
+        :error
+    end
+  end
+  
   ## Handling synchronous calls
 
   @doc """
@@ -24,8 +39,9 @@ defmodule Weather do
   """
 
   # need to be before handle_call(request, ...)
-  def handle_call(:recent, _from, state) do
-     {:reply, "Recently viewed: #{inspect state}", state}
+  def handle_cast(:recent, state) do
+    IO.puts "Recently viewed: #{inspect state}"
+    {:noreply, state}
   end
   
   def handle_call(request, _from, state) do
@@ -34,21 +50,20 @@ defmodule Weather do
   end
 
 
-
   ### Client API
 
   @doc """
-  Start our queue and link it.  This is a helper method
+  Start our queue and link it. This is a helper method
 
   """
 
   def start_link(state \\ []) do
-    GenServer.start_link(@name, state, name: @name)
+    GenServer.start_link(@name, state, [{:name, {:global, @name}}])
   end
 
-  def report(code), do: GenServer.call @name, code
+  def report(code), do: GenServer.call {:global, @name}, code
 
-  def recent(), do: GenServer.call @name, :recent
+  def recent(), do: GenServer.cast {:global, @name}, :recent
   
   ### Helper functions
   

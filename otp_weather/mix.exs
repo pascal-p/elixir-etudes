@@ -14,8 +14,11 @@ defmodule OtpWeather.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger, :httpoison],
-     mod: {OtpWeather, []}]
+    [
+      applications: [:logger, :httpoison],
+      mod: {OtpWeather, []},
+      registered: [ :weather ]
+    ]
   end
 
   # Dependencies can be Hex packages:
