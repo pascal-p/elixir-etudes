@@ -1,4 +1,4 @@
-defmodule Weather do
+defmodule Weather.Server do
   use GenServer
   require Logger
   
@@ -6,17 +6,19 @@ defmodule Weather do
   @url        "http://w1.weather.gov/xml/current_obs/"  
   @user_agent [ {"User-agent", "Elixir client"} ]
   @keep       10    # keep at most 10 items in the state
-  
+
+  defmodule State, do: defstruct list: [], stash_pid: nil
+    
   ### GenServer API
 
   @doc """
   GenServer.init/1 callback
   """
-  def init(state) do
+  def init(stash_pid) do
+    init_list = Weather.StashWorker.get_list stash_pid
     HTTPoison.start
-    {:ok, state}
+    { :ok, %State{list: init_list, stash_pid: stash_pid} }   
   end
-
 
   @doc "Connect to another node"
   @spec connect(atom) :: atom
@@ -40,7 +42,7 @@ defmodule Weather do
 
   # need to be before handle_call(request, ...)
   def handle_cast(:recent, state) do
-    IO.puts "Recently viewed: #{inspect state}"
+    IO.puts "Recently viewed: #{inspect state.list}"
     {:noreply, state}
   end
   
@@ -49,6 +51,9 @@ defmodule Weather do
     {:reply, reply, n_state}
   end
 
+  def terminate(_reason, state) do
+    Weather.StashWorker.save_list state.stash_pid, state.list
+  end
 
   ### Client API
 
@@ -57,8 +62,9 @@ defmodule Weather do
 
   """
 
-  def start_link(state \\ []) do
-    GenServer.start_link(@name, state, [{:name, {:global, @name}}])
+  def start_link(stash_pid) do
+    Logger.info "Starting #{@name}"
+    GenServer.start_link(@name, stash_pid, [{:name, {:global, @name}}])
   end
 
   def report(code), do: GenServer.call {:global, @name}, code
@@ -68,19 +74,21 @@ defmodule Weather do
   ### Helper functions
   
   defp get_weather_info(req, state) do
-    if Regex.match?(~r/[A-Z]{4}/, "#{req}") do
+    if Regex.match?(~r/[A-Z]{4}/, req) do
+    #if Regex.match?(~r/[A-Z]{4}/, "#{req}") do
       f_url = @url <> String.upcase(req) <> ".xml"
-      Logger.info "Trying: #{f_url}"
+      Logger.info "Trying: #{f_url} // state: #{inspect state}"
       #
       {status, resp} = HTTPoison.get(f_url, @user_agent)
+      Logger.info "Got #{inspect status}"
       [reply, n_state] =
         case {status, resp} do
           {:ok, %HTTPoison.Response{status_code: 200, body: xml_body}} ->
             answer =  (for tag <- [:location, :observation_time_rfc822,
                                    :weather, :temperature_string], do:
                            get_content(tag, xml_body))
-            { n_state, _ } = Enum.split(state, @keep - 1)
-            [{ :ok, answer }, [req | n_state]]
+            { n_list, _ } = Enum.split(state.list, @keep - 1)
+            [{ :ok, answer }, %State{state | list: [req | n_list]}]
           
           {:ok, %HTTPoison.Response{status_code: 404}} ->            
             [{ :error,  :not_found }, state]
@@ -91,6 +99,7 @@ defmodule Weather do
             _ ->
             exit(:odd)  # something odd happened !
         end
+       Logger.info "Got #{inspect reply} // new state #{inspect n_state}"
       {reply, n_state}
     else
       {:error, :not_a_4_letter_code}
@@ -112,20 +121,34 @@ defmodule Weather do
 end
 
 
-# iex(1)> Weather.start_link
-# {:ok, #PID<0.180.0>}
-# iex(20> Weather.report("KSJC")
-# 10:40:46.285 [info]  Trying: http://w1.weather.gov/xml/current_obs/KSJC.xml
+# iex -S mix
+# Erlang/OTP 18 [erts-7.3.1] [source] [64-bit] [smp:4:4] [async-threads:10] [hipe] [kernel-poll:false]
+#
+# Compiled lib/weather/server.ex
+#
+# 23:00:43.278 [info]  Starting App Elixir.OtpWeather
+#
+# 23:00:43.278 [info]  Starting main supervisor Elixir.Weather.MainSupervisor
+#
+# 23:00:43.278 [info]  Starting Elixir.Weather.StashWorker 
+#
+# 23:00:43.279 [info]  Starting sub supervisor
+#
+# 23:00:43.279 [info]  sub supervisor in charge of Sequence.Server
+#
+# 23:00:43.279 [info]  Starting Elixir.Weather.Server
+# Interactive Elixir (1.2.5) - press Ctrl+C to exit (type h() ENTER for help)
+# iex(1)> Weather.Server.report("KSJC")
+#
+# 23:00:47.706 [info]  Trying: http://w1.weather.gov/xml/current_obs/KSJC.xml // state: %Weather.Server.State{list: []}
+#
+# 23:00:47.871 [info]  Got :ok
+#
+# 23:00:47.875 [info]  Got {:ok, [location: "San Jose, San Jose International Airport, CA", observation_time_rfc822: "Fri, 17 Jun 2016 02:53:00 -0700", weather: "Fair", temperature_string: "60.0 F (15.6 C)"]} // new state %Weather.Server.State{list: ["KSJC"]}
 # {:ok,
 #  [location: "San Jose, San Jose International Airport, CA",
-#   observation_time_rfc822: "Thu, 16 Jun 2016 14:53:00 -0700",
-#   weather: "Partly Cloudy", temperature_string: "75.0 F (23.9 C)"]}
-# iex(3)> 
-#
-#
-#
-# iex(2)> GenServer.call(Weather, "KSJC")
-# >> Trying: http://w1.weather.gov/xml/current_obs/KSJC.xmlKSJC.xml
-#  >> Got an answer...
-# {:ok,
-#  %HTTPoison.Response{body:  ...
+#   observation_time_rfc822: "Fri, 17 Jun 2016 02:53:00 -0700", weather: "Fair",
+#   temperature_string: "60.0 F (15.6 C)"]}
+# iex(2)>
+
+
